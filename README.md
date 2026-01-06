@@ -12,7 +12,7 @@ Build
 Run the build target in the repository root (requires Go toolchain):
 
 ```bash
-make build
+make build  # builds ./bin/saltjq
 ```
 
 or directly with go:
@@ -25,11 +25,11 @@ Makefile targets
 
 | Target  | Description |
 |---------|-------------|
-| build   | build the saltjq binary |
+| build   | build the saltjq binary (into ./bin) |
 | fmt     | run gofmt -w . |
 | test    | run go test ./... |
 | vet     | run go vet ./... |
-| run     | build and run the binary (./saltjq) |
+| run     | build and run the binary (./bin/saltjq) |
 | install | install binary to GOBIN |
 | clean   | remove the built binary |
 
@@ -38,30 +38,31 @@ Flags
 | Flag | Short | Description |
 |------|-------|-------------|
 | --expr | -e | Expression to run (subset supported, e.g. `.users[] | .name`) |
-| --stream | -s | Stream top-level array elements (NDJSON or large arrays) |
-| --table |  | Format arrays of objects as a table |
+| --stream | -s | Stream top-level array elements (supports NDJSON or large arrays; values are decoded and evaluated one-by-one) |
+| --raw | -r | Raw output for strings (no JSON quotes), useful for shell pipelines |
+| --table |  | Format arrays of objects as a table (note: `--table` expects a full array result; it is not automatically compatible with `-s` streaming mode unless you collect items) |
 | --style |  | Choose output style: `clean`, `dev`, `viz` |
 | --no-color |  | Disable color output (useful when piping to non-TTY) |
 
 Examples
 
-Pretty-print a field from the sample JSON:
+Pretty-print a field from the sample JSON (non-streaming):
 
 ```bash
-cat testdata/sample.json | ./saltjq -e '.users[] | .name'
+./bin/saltjq -e '.users[] | .name' testdata/sample.json
 ```
 
-Print an array-of-objects as a table:
+Stream a large array or NDJSON and print a field as items arrive:
 
 ```bash
-./saltjq -e '.users' --table testdata/sample.json
+cat testdata/sample.json | ./bin/saltjq -s -e '.users[] | .name'
 ```
 
-Build and run via Makefile:
+Print raw strings (no JSON quotes):
 
 ```bash
-make build
-./saltjq -e '.users[] | .name' testdata/sample.json
+./bin/saltjq -e '.users[] | .name' -r testdata/sample.json
+cat testdata/sample.json | ./bin/saltjq -s -e '.users[] | .name' -r
 ```
 
 Notes

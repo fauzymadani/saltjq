@@ -6,10 +6,14 @@ import (
 	"io"
 )
 
+// StreamBufferSize controls the buffer size of the items channel returned by StreamJSON.
+// It can be adjusted by callers/tests for tuning.
+var StreamBufferSize = 16
+
 // StreamJSON decodes input as a stream of JSON values. It supports a top-level
 // array (decodes each element) or multiple concatenated/NDJSON values.
 func StreamJSON(r io.Reader) (<-chan interface{}, <-chan error) {
-	items := make(chan interface{}, 16)
+	items := make(chan interface{}, StreamBufferSize)
 	errs := make(chan error, 1)
 	go func() {
 		defer close(items)
