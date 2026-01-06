@@ -18,7 +18,6 @@ func main() {
 	noColor := flag.Bool("no-color", false, "disable color output")
 	flag.Parse()
 
-	// Input source: optional file argument or stdin
 	var r io.Reader
 	if flag.NArg() > 0 {
 		fpath := flag.Arg(0)
@@ -36,25 +35,51 @@ func main() {
 		r = os.Stdin
 	}
 
-	data, err := query.ReadAllJSON(r)
-	if err != nil {
-		errs.Handle(errs.Wrap(err, 2, "failed to read json"))
-	}
-
 	style := printer.GetStyle(*styleName)
 	if *noColor {
 		style.NoColor = true
 	}
 
-	// Evaluate expression
-	results, err := query.Eval(data, *expr, *stream)
+	w := os.Stdout
+
+	if *stream {
+		items, errc := query.StreamJSON(r)
+		firstOut := true
+		for item := range items {
+			results, err := query.Eval(item, *expr, true)
+			if err != nil {
+				errs.Handle(errs.Wrap(err, 3, "evaluation error"))
+			}
+			for i, v := range results {
+				if !firstOut || i > 0 {
+					if _, err := io.WriteString(w, "\n"); err != nil {
+						errs.Handle(errs.Wrap(err, 4, "write error"))
+					}
+				}
+				if err := printer.PrintValue(w, v, style); err != nil {
+					errs.Handle(errs.Wrap(err, 4, "write error"))
+				}
+				firstOut = false
+			}
+		}
+		// check for error from stream
+		if err := <-errc; err != nil {
+			errs.Handle(errs.Wrap(err, 2, "failed to read json"))
+		}
+		return
+	}
+
+	data, err := query.ReadAllJSON(r)
+	if err != nil {
+		errs.Handle(errs.Wrap(err, 2, "failed to read json"))
+	}
+
+	results, err := query.Eval(data, *expr, false)
 	if err != nil {
 		errs.Handle(errs.Wrap(err, 3, "evaluation error"))
 	}
 
-	w := os.Stdout
 	if *table {
-		// If a single array-of-objects returned, print as table
 		if len(results) == 1 {
 			if arr, ok := results[0].([]interface{}); ok {
 				if err := printer.PrintTable(w, arr, style); err != nil {
@@ -66,7 +91,6 @@ func main() {
 	}
 
 	for i, v := range results {
-		// separate multiple results with newline
 		if i > 0 {
 			if _, err := io.WriteString(w, "\n"); err != nil {
 				errs.Handle(errs.Wrap(err, 4, "write error"))
