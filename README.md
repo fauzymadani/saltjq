@@ -40,6 +40,7 @@ Flags
 | --expr | -e | Expression to run (subset supported, e.g. `.users[] | .name`) |
 | --stream | -s | Stream top-level array elements (supports NDJSON or large arrays; values are decoded and evaluated one-by-one) |
 | --raw | -r | Raw output for strings (no JSON quotes), useful for shell pipelines |
+| --buffer-size |  | Buffer size for streaming items channel (default 16) |
 | --table |  | Format arrays of objects as a table (note: `--table` expects a full array result; it is not automatically compatible with `-s` streaming mode unless you collect items) |
 | --style |  | Choose output style: `clean`, `dev`, `viz` |
 | --no-color |  | Disable color output (useful when piping to non-TTY) |
@@ -56,6 +57,12 @@ Stream a large array or NDJSON and print a field as items arrive:
 
 ```bash
 cat testdata/sample.json | ./bin/saltjq -s -e '.users[] | .name'
+```
+
+Control the stream buffer size (example: increase to 64):
+
+```bash
+cat testdata/sample.json | ./bin/saltjq -s --buffer-size 64 -e '.users[] | .name'
 ```
 
 Print raw strings (no JSON quotes):

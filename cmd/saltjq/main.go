@@ -35,7 +35,13 @@ func main() {
 	styleName := flag.String("style", "clean", "output style: clean|dev|viz")
 	noColor := flag.Bool("no-color", false, "disable color output")
 	raw := flag.Bool("r", false, "raw output for strings (no JSON quotes)")
+	bufferSize := flag.Int("buffer-size", query.StreamBufferSize, "buffer size for streaming items channel")
 	flag.Parse()
+
+	// apply runtime buffer-size if provided
+	if bufferSize != nil && *bufferSize > 0 {
+		query.StreamBufferSize = *bufferSize
+	}
 
 	var r io.Reader
 	if flag.NArg() > 0 {
@@ -55,8 +61,17 @@ func main() {
 	}
 
 	style := printer.GetStyle(*styleName)
+	// if user explicitly asked to disable color, respect it
 	if *noColor {
 		style.NoColor = true
+	} else {
+		// auto-disable color when stdout is not a terminal
+		if fi, err := os.Stdout.Stat(); err == nil {
+			// if not a character device, assume non-tty (piped/redirected)
+			if fi.Mode()&os.ModeCharDevice == 0 {
+				style.NoColor = true
+			}
+		}
 	}
 
 	w := os.Stdout
